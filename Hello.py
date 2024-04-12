@@ -1,51 +1,128 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022)
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import streamlit as st
-from streamlit.logger import get_logger
+from dataclasses import dataclass
+from typing import List
 
-LOGGER = get_logger(__name__)
+@dataclass
+class Example:
+    text: str
+    output: str
 
+@dataclass
+class FewShotPrompt:
+    examples: List[Example]
 
-def run():
-    st.set_page_config(
-        page_title="Hello",
-        page_icon="👋",
-    )
+    def show(self) -> str:
+        example_template = """
+<example>
+Text: {text}
+Output: {output}
+</example>"""
+        examples_str = ""
+        for example in self.examples:
+            examples_str += example_template.format(
+                text=example.text,
+                output=example.output
+            )
+        return examples_str
 
-    st.write("# Welcome to Streamlit! 👋")
+@dataclass
+class COSTARPrompt:
+    context: str
+    objective: str
+    style: str
+    audience: str
+    response: str
 
-    st.sidebar.success("Select a demo above.")
+    def show(self) -> str:
+        costar_template = f"""
+<CONTEXT>
+{self.context}
+</CONTEXT>
+<OBJECTIVE>
+{self.objective}
+</OBJECTIVE>
+<STYLE>
+{self.style}
+</STYLE>
+<AUDIENCE>
+{self.audience}
+</AUDIENCE>
+<RESPONSE>
+{self.response}
+</RESPONSE>
+"""
+        return costar_template
 
-    st.markdown(
-        """
-        Streamlit is an open-source app framework built specifically for
-        Machine Learning and Data Science projects.
-        **👈 Select a demo from the sidebar** to see some examples
-        of what Streamlit can do!
-        ### Want to learn more?
-        - Check out [streamlit.io](https://streamlit.io)
-        - Jump into our [documentation](https://docs.streamlit.io)
-        - Ask a question in our [community
-          forums](https://discuss.streamlit.io)
-        ### See more complex demos
-        - Use a neural net to [analyze the Udacity Self-driving Car Image
-          Dataset](https://github.com/streamlit/demo-self-driving)
-        - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
-    """
-    )
+@dataclass
+class ChainOfThoughtPrompt:
+    steps: List[str]
 
+    def show(self) -> str:
+        if not self.steps:
+            return "Think step by step"
+        else:
+            return '\n'.join([f"{ix}. {step}" for ix, step in enumerate(self.steps, start=1)])
+
+default_context="I want to share our company's new product feature for serving open source large language models at the lowest cost and lowest latency. The product feature is Anyscale Endpoints, which serves all Llama series models and the Mistral series too."
+default_objective="Create a LinkedIn post for me, which aims at Gen AI application developers to click the blog link at the end of the post that explains the features, a handful of how-to-start guides and tutorials, and how to register to use it, at no cost."
+default_style="Follow the simple writing style common in communications aimed at developers such as one practised and advocated by Stripe. Be persuasive yet maintain a neutral tone. Avoid sounding too much like sales or marketing pitch."
+default_audience="Tailor the post toward developers seeking to look at an alternative to closed and expensive LLM models for inference, where transparency, security, control, and cost are all imperatives for their use cases."
+default_response="Be concise and succinct in your response yet impactful. Where appropriate, use appropriate emojis."
+
+def main():
+    st.title("Prompt Generator")
+    # Few-shot prompting
+    st.header("Question:")
+    question = st.text_input("The prompt of the model")
+    st.header("Few-Shot Prompting")
+    st.markdown("Provide few example of input/output for the model to learn what you expect")
+    num_examples = st.number_input("Number of Examples", min_value=1, value=1, step=1)
+    examples = []
+    for i in range(num_examples):
+        st.subheader(f"Example {i+1}")
+        text = st.text_area(f"Text {i+1}")
+        output = st.text_area(f"Output {i+1}")
+        examples.append(Example(text=text, output=output))
+    few_shot_prompt = FewShotPrompt(examples=examples)
+
+    # COSTAR prompting
+    use_costar = st.checkbox("Use COSTAR Prompting")
+    st.markdown("Use the CoSTAR method to provide context, objective, style, audience, and response for the model to generate a response.")
+    if use_costar:
+        st.header("COSTAR Prompting")
+        context = st.text_area("Context", default_context)
+        objective = st.text_area("Objective", default_objective)
+        style = st.text_area("Style", default_style)
+        audience = st.text_area("Audience", default_audience)
+        response = st.text_area("Response", default_response)
+        costar_prompt = COSTARPrompt(
+            context=context,
+            objective=objective,
+            style=style,
+            audience=audience,
+            response=response
+        )
+
+    # Chain of Thought prompting
+    st.header("Chain of Thought Prompting")
+    st.markdown("Provide a series of steps to guide the model in generating a response.")
+    num_steps = st.number_input("Number of Steps", min_value=0, value=0, step=1)
+    steps = []
+    for i in range(num_steps):
+        step = st.text_input(f"Step {i+1}")
+        steps.append(step)
+    chain_of_thought_prompt = ChainOfThoughtPrompt(steps=steps)
+
+    # Generate prompt
+    if st.button("Generate Prompt"):
+        st.header("Generated Prompt")
+        prompt = few_shot_prompt.show()
+        if use_costar:
+            prompt += "\n" + costar_prompt.show()
+        prompt += "\n" + chain_of_thought_prompt.show()
+        prompt += f"""\nText: {question}
+Output:"""
+        st.code(prompt)
 
 if __name__ == "__main__":
-    run()
+    main()
