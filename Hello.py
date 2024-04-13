@@ -1,67 +1,7 @@
 import streamlit as st
 from dataclasses import dataclass
 from typing import List
-
-@dataclass
-class Example:
-    text: str
-    output: str
-
-@dataclass
-class FewShotPrompt:
-    examples: List[Example]
-
-    def show(self) -> str:
-        example_template = """
-<example>
-Text: {text}
-Output: {output}
-</example>"""
-        examples_str = ""
-        for example in self.examples:
-            examples_str += example_template.format(
-                text=example.text,
-                output=example.output
-            )
-        return examples_str
-
-@dataclass
-class COSTARPrompt:
-    context: str
-    objective: str
-    style: str
-    audience: str
-    response: str
-
-    def show(self) -> str:
-        costar_template = f"""
-<CONTEXT>
-{self.context}
-</CONTEXT>
-<OBJECTIVE>
-{self.objective}
-</OBJECTIVE>
-<STYLE>
-{self.style}
-</STYLE>
-<AUDIENCE>
-{self.audience}
-</AUDIENCE>
-<RESPONSE>
-{self.response}
-</RESPONSE>
-"""
-        return costar_template
-
-@dataclass
-class ChainOfThoughtPrompt:
-    steps: List[str]
-
-    def show(self) -> str:
-        if not self.steps:
-            return "Think step by step"
-        else:
-            return '\n'.join([f"{ix}. {step}" for ix, step in enumerate(self.steps, start=1)])
+from prompt_classes import Example, FewShotPrompt, COSTARPrompt, ChainOfThoughtPrompt
 
 default_context="I want to share our company's new product feature for serving open source large language models at the lowest cost and lowest latency. The product feature is Anyscale Endpoints, which serves all Llama series models and the Mistral series too."
 default_objective="Create a LinkedIn post for me, which aims at Gen AI application developers to click the blog link at the end of the post that explains the features, a handful of how-to-start guides and tutorials, and how to register to use it, at no cost."
@@ -76,7 +16,7 @@ def main():
     question = st.text_input("The prompt of the model")
     st.header("Few-Shot Prompting")
     st.markdown("Provide few example of input/output for the model to learn what you expect")
-    num_examples = st.number_input("Number of Examples", min_value=1, value=1, step=1)
+    num_examples = st.number_input("Number of Examples", min_value=0, value=1, step=1)
     examples = []
     for i in range(num_examples):
         st.subheader(f"Example {i+1}")
